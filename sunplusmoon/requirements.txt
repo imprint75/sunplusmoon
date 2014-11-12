@@ -1,0 +1,6 @@
+django
+south
+MySQL-python
+python-memcached
+django-extensions
+requests
