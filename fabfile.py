@@ -26,6 +26,7 @@ def testing():
 
 
 def build():
+    make_directory()
     apt_update()
     add_apt_repo()
     create_log_dirs()
@@ -41,7 +42,6 @@ def build():
     upgrade_distribute()
     install_pip_reqs()
     link_confs()
-    fix_la()
     restart()
 
 
@@ -49,7 +49,7 @@ def make_directory(dir_name=PROJECT_NAME):
     with cd('/srv/'):
         if not exists(dir_name):
             sudo('mkdir {}'.format(dir_name))
-            sudo('chown {}:{} {}'.format(env.user, dir_name))
+        sudo('chown {0}:{0} {1}'.format(env.user, dir_name))
 
 
 def git_clone_repo(dir_name=WORKING_DIR):
@@ -68,15 +68,15 @@ def upgrade_distribute(venv=VENV_DIR):
 
 
 def install_pip_reqs(venv=VENV_DIR):
-    command = '/home/{}/{}/bin/pip install --upgrade -r ' \
-              '/srv/msma/msma/requirements.txt'
-    run(command.format(env.user, venv))
+    command = '{0}/{1}/bin/pip install --upgrade -r ' \
+              '{0}/{2}/{2}/requirements.txt'
+    run(command.format(WORKING_DIR, venv, PROJECT_NAME))
 
 
-def link_confs(dir_name=WORKING_DIR, file_name=WORKING_DIR):
-    n1 = 'ln -s /srv/{0}/{0}/confs/{1} /etc/nginx/sites-available/{1}'
+def link_confs(dir_name=WORKING_DIR, file_name=PROJECT_NAME):
+    n1 = 'ln -s {0}/{1}/{1}/confs/{1} /etc/nginx/sites-available/{1}'
     sudo(n1.format(dir_name, file_name))
-    u1 = 'ln -s /srv/{0}/{0}/confs/{1}.ini /etc/uwsgi/apps-available/{1}.ini'
+    u1 = 'ln -s {0}/{1}/{1}/confs/{1}.ini /etc/uwsgi/apps-available/{1}.ini'
     sudo(u1.format(dir_name, file_name))
     n2 = 'ln -s /etc/nginx/sites-available/{0} /etc/nginx/sites-enabled/{0}'
     sudo(n2.format(file_name))
@@ -102,12 +102,11 @@ def restart():
 
 
 def deploy():
-    with cd('/srv/{}'.format(WORKING_DIR)):
+    with cd(WORKING_DIR):
         run('git pull')
-        command = '/srv/{}/{}/bin/pip install -r msma/requirements.txt'
-        run(command.format(WORKING_DIR, VENV_DIR))
-        command = '/srv/{}/{}/bin/python manage.py migrate'
-        run(command.format(WORKING_DIR, VENV_DIR))
+        install_pip_reqs()
+        #command = '{}/{}/bin/python manage.py migrate'
+        #run(command.format(WORKING_DIR, VENV_DIR))
     restart()
 
 
@@ -206,7 +205,7 @@ def install_mysql():
 
 def create_mysql_db(password=None):
     user = 'root'
-    dbname = 'msma'
+    dbname = PROJECT_NAME
     if password:
         run('mysqladmin -u {} -p{} create {}'.format(user, password, dbname))
     else:
@@ -214,16 +213,16 @@ def create_mysql_db(password=None):
 
 
 def create_mysql_user():
-    run("echo \"CREATE USER 'msma'@'localhost' IDENTIFIED BY 'msma';\"")
+    run("echo \"CREATE USER 'sunplusmoon'@'localhost' IDENTIFIED BY 'sunplusmoon';\"")
     run("echo "
-        "\"GRANT ALL PRIVILEGES ON msma.* "
-        "  To 'msma'@'localhost' "
-        "  IDENTIFIED BY 'msma';\" | mysql -u root")
+        "\"GRANT ALL PRIVILEGES ON sunplusmoon.* "
+        "  To 'sunplusmoon'@'localhost' "
+        "  IDENTIFIED BY 'sunplusmoon';\" | mysql -u root")
 
 
 def create_django_tables():
-    command = '/home/{}/msma_env/bin/python /srv/msma/manage.py syncdb'
-    run(command.format(env.user))
+    command = '{0}/{1}/bin/python {0}/{2}/manage.py syncdb'
+    run(command.format(WORKING_DIR, VENV_DIR, PROJECT_NAME))
 
 
 def apt_get(*packages):
