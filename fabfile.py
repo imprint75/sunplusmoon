@@ -1,20 +1,13 @@
-import os
 from fabric.api import env, run, prompt, warn, settings, hide
 from fabric.colors import green, blue
 from fabric.context_managers import cd
-from fabric.operations import sudo, local as lrun
+from fabric.operations import sudo
 from fabric.contrib.files import exists
 
-WORKING_DIR = 'sunplusmoon'
+WORKING_DIR = '/srv/sunplusmoon'
+PROJECT_NAME = 'sunplusmoon'
 VENV_DIR = 'sunplusmoon_env'
 GIT_REPO = 'git@github.com:imprint75/sunplusmoon.git'
-
-
-def local():
-    env.hosts = ['localhost']
-    env.user = 'vagrant'
-    env.password = 'vagrant'
-    env.run = lrun
 
 
 def vagrant():
@@ -24,13 +17,12 @@ def vagrant():
 
 
 def prod():
-    env.hosts = ['msmusicacademy.com']
-    env.user = 'msma'
-    env.password = 'makemusic'
+    env.hosts = ['sunplusmoon.com']
+    env.user = 'sean'
 
 
 def testing():
-    run('ls')
+    run('ls -lah')
 
 
 def build():
@@ -53,7 +45,7 @@ def build():
     restart()
 
 
-def make_directory(dir_name=WORKING_DIR):
+def make_directory(dir_name=PROJECT_NAME):
     with cd('/srv/'):
         if not exists(dir_name):
             sudo('mkdir {}'.format(dir_name))
@@ -61,19 +53,18 @@ def make_directory(dir_name=WORKING_DIR):
 
 
 def git_clone_repo(dir_name=WORKING_DIR):
-    with cd('/srv/'):
-        sudo('git clone {} {}'.format(GIT_REPO, dir_name))
+    with cd(WORKING_DIR):
+        sudo('git clone {} {}'.format(GIT_REPO, PROJECT_NAME))
 
 
 def create_env(venv=VENV_DIR):
-    run('cd /home/{}'.format(env.user))
-    run('virtualenv {}'.format(venv))
+    with cd(WORKING_DIR):
+        run('virtualenv {}'.format(venv))
 
 
 def upgrade_distribute(venv=VENV_DIR):
-    #sudo('easy_install -U distribute')
-    command = '/home/{}/{}/bin/pip install --upgrade distribute'
-    run(command.format(env.user, venv))
+    command = '{}/{}/bin/pip install --upgrade distribute'
+    run(command.format(WORKING_DIR, venv))
 
 
 def install_pip_reqs(venv=VENV_DIR):
@@ -82,10 +73,10 @@ def install_pip_reqs(venv=VENV_DIR):
     run(command.format(env.user, venv))
 
 
-def link_confs(dir_name='msma', file_name='msma'):
-    n1 = 'ln -s /srv/{0}/msma/confs/{1} /etc/nginx/sites-available/{1}'
+def link_confs(dir_name=WORKING_DIR, file_name=WORKING_DIR):
+    n1 = 'ln -s /srv/{0}/{0}/confs/{1} /etc/nginx/sites-available/{1}'
     sudo(n1.format(dir_name, file_name))
-    u1 = 'ln -s /srv/{0}/msma/confs/{1}.ini /etc/uwsgi/apps-available/{1}.ini'
+    u1 = 'ln -s /srv/{0}/{0}/confs/{1}.ini /etc/uwsgi/apps-available/{1}.ini'
     sudo(u1.format(dir_name, file_name))
     n2 = 'ln -s /etc/nginx/sites-available/{0} /etc/nginx/sites-enabled/{0}'
     sudo(n2.format(file_name))
@@ -111,14 +102,12 @@ def restart():
 
 
 def deploy():
-    with cd('/srv/msma'):
-        if env.user == 'msma':
-            run('git pull')
-            run('git submodule foreach git checkout master')
-            run('git submodule foreach git pull origin master')
-        command = '/home/{}/msma_env/bin/pip install -r msma/requirements.txt'
-        run(command.format(env.user))
-        run('/home/{}/msma_env/bin/python manage.py migrate'.format(env.user))
+    with cd('/srv/{}'.format(WORKING_DIR)):
+        run('git pull')
+        command = '/srv/{}/{}/bin/pip install -r msma/requirements.txt'
+        run(command.format(WORKING_DIR, VENV_DIR))
+        command = '/srv/{}/{}/bin/python manage.py migrate'
+        run(command.format(WORKING_DIR, VENV_DIR))
     restart()
 
 
@@ -255,19 +244,3 @@ def mysql_install():
          '%s" | debconf-set-selections' % mysql_password)
     apt_get('mysql-server')
     sudo('apt-get install libmysqlclient-dev')
-
-
-def rebuild(password=None):
-
-    user = 'root'
-    dbname = 'msma'
-    if password:
-        run('mysql -u {} -p{} -e \' drop database if exists {};\''.format(user, password, dbname, dbname))
-    else:
-        run('mysql -u {} -e \'drop database if exists {};\''.format(user, dbname))
-
-    create_mysql_db()
-    create_mysql_user()
-    create_django_tables()
-    create_teacher_group()
-    deploy()
