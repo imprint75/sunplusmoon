@@ -1,0 +1,17 @@
+server {
+    listen          80;
+    server_name     sunplusmoon.com www.sunplusmoon.com;
+
+    access_log /var/www/logs/access.log;
+    error_log /var/www/logs/error.log;
+
+    location / {
+        include         uwsgi_params;
+        uwsgi_pass      unix:///run/uwsgi/app/sunplusmoon/socket;
+    }
+
+    location /static {
+        alias /srv/sunplusmoon/sunplusmoon/static/;
+        index  index.html index.htm;
+    }
+}
