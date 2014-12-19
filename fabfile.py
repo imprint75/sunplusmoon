@@ -102,8 +102,8 @@ def restart():
 
 
 def deploy():
-    with cd(WORKING_DIR):
-        run('git pull')
+    with cd('/'.join([WORKING_DIR, PROJECT_NAME])):
+        sudo('git pull')
         install_pip_reqs()
         #command = '{}/{}/bin/python manage.py migrate'
         #run(command.format(WORKING_DIR, VENV_DIR))
